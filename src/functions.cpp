@@ -4,6 +4,7 @@
 #include "banquetRule.hpp"
 #include "exception.hpp"
 #include "activityRule.hpp"
+#include <cassert>
 
 namespace r0 {
 States randomRecipe(States &, CList *, RList *);
@@ -98,7 +99,7 @@ States r0::randomRecipe(States &s, CList *chefList, RList *r) {
 States r0::swapChefTool(States &s, CList *chefList, RList *recipeList) {
     int chefNum = rand() % NUM_CHEFS;
     auto chef = s.chef[chefNum];
-    int orig_tool = chef->tool;
+    int orig_tool = chef->getTool();
 
     int tool;
     do {
@@ -125,7 +126,7 @@ States r0::swapChefTool(States &s, CList *chefList, RList *recipeList) {
 bool deductTool(States s, CList *chefList, RList *recipeList, int chefId,
                 int deduction) {
     Chef chef(*s.chef[chefId]);
-    int tool = chef.tool;
+    int tool = chef.getTool();
     int *cookAbility;
     switch (tool) {
     case STIRFRY:
@@ -168,9 +169,13 @@ bool deductTool(States s, CList *chefList, RList *recipeList, int chefId,
 int e0::sumPrice(States s, CList *chefList, RList *recipeList, int log,
                  bool exactChefTool) {
     if (exactChefTool) {
+        for (int i = 0; i < NUM_CHEFS; i++) {
+            s.chef[i]->modifyTool(s.toolCKPT[i]);
+        }
+        assert(chefList != NULL && recipeList != NULL);
         // std::cout << "exactChefTool" << std::endl;
         for (int i = 0; i < NUM_CHEFS; i++) {
-            AbilityEnum tool = s.chef[i]->tool;
+            AbilityEnum tool = s.chef[i]->getTool();
             std::string toolName = getToolName(tool);
             toolName = "-" + toolName;
             if (deductTool(s, chefList, recipeList, i, 40)) {
@@ -209,25 +214,26 @@ int e0::sumPrice(States s, CList *chefList, RList *recipeList, int log,
             fullCache = 0;
             for (int i = 0; i < 9; i++) {
                 if ((log & 0x10) && i % 3 == 0) {
-                std::cout << "VERBOSE************" << std::endl;
-                s.chef[d2 + i / 3]->print();
-                std::cout << "************" << std::endl;
+                    std::cout << "VERBOSE************" << std::endl;
+                    s.chef[d2 + i / 3]->print();
+                    std::cout << "************" << std::endl;
                 }
-                bi[d + i] = getPrice(s.chef[d2 + i / 3], s.recipe[d + i], rule[d + i], (log & 0x10));
+                bi[d + i] = getPrice(s.chef[d2 + i / 3], s.recipe[d + i],
+                                     rule[d + i], (log & 0x10));
                 totalFull += bi[d + i].full;
                 totalScore += bi[d + i].price;
                 scoreCache += bi[d + i].price;
                 fullCache += bi[d + i].full;
                 if ((log & 0x1) && i % 3 == 2) {
                     std::cout << "厨师：" << s.chef[d2 + i / 3]->name << " -> "
-                            << fullCache << " / " << scoreCache << std::endl;
+                              << fullCache << " / " << scoreCache << std::endl;
                     scoreCache = 0;
                     fullCache = 0;
                     std::cout << "菜谱：" << s.recipe[d + i - 2]->name << "；"
-                            << s.recipe[d + i - 1]->name << "；" << s.recipe[d + i]->name
-                            << std::endl;
+                              << s.recipe[d + i - 1]->name << "；"
+                              << s.recipe[d + i]->name << std::endl;
                 }
-            } 
+            }
             switch (totalFull - bestFull[g]) {
             case 0:
                 ans += (int)std::ceil(totalScore * 1.3);
@@ -235,7 +241,7 @@ int e0::sumPrice(States s, CList *chefList, RList *recipeList, int log,
             default:
                 int delta = std::abs(totalFull - bestFull[g]);
                 ans += (int)std::ceil(totalScore * (1 - 0.05 * delta));
-            }           
+            }
         }
         return ans;
     } else if (MODE == 2 || MODE == 0) {
@@ -361,4 +367,25 @@ void r00::unrepeatedRandomRecipe(std::vector<Recipe *> *rl, Recipe **rs,
         throw NoRecipeException();
     }
     rs[index] = r;
+}
+States perfectTool(States &s) {
+    for (int i = 0; i < NUM_CHEFS; i++) {
+        auto chef = s.chef[i];
+        if (chef->getTool() == NO_TOOL)
+            continue;
+        chef->modifyTool(NOT_EQUIPPED);
+        int max = e0::sumPrice(s);
+        AbilityEnum bestTool = NOT_EQUIPPED;
+        for (int j = 0; j < 6; j++) {
+            chef->modifyTool(AbilityEnum(j));
+            int temp = e0::sumPrice(s);
+            if (temp > max) {
+                max = temp;
+                bestTool = AbilityEnum(j);
+            }
+        }
+        chef->modifyTool(bestTool);
+        s.toolCKPT[i] = bestTool;
+    }
+    return s;
 }
