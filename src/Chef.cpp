@@ -8,7 +8,9 @@
 #include "Calculator.hpp"
 #include "utils/json.hpp"
 #include "../toolEquipped.hpp"
-// #define jsonStr2Int(v) atoi(v.asCString())
+#include "exception.hpp"
+#include "loadToolEquipped.hpp"
+
 CookAbility Chef::globalAbilityBuff;
 int Chef::globalAbilityMale = 0;
 int Chef::globalAbilityFemale = 0;
@@ -40,14 +42,30 @@ void loadChef(CList &chefList) {
     }
     Json::Value usrData;
     Json::Value gameData;
-    std::ifstream gameDataF("../data/data.min.json", std::ifstream::binary);
-    std::ifstream usrDataF("../data/userData.json", std::ifstream::binary);
+
+    // std::ifstream gameDataF("../data/data.min.json", std::ifstream::binary);
+    // std::ifstream usrDataF("../data/userData.json", std::ifstream::binary);
+
+    std::ifstream gameDataF("data.min.json", std::ifstream::binary);
+    if (!gameDataF.good()) {
+        gameDataF.open("../data/data.min.json", std::ifstream::binary);
+        if (!gameDataF.good()) {
+            throw FileNotExistException();
+        }
+    }
+    std::ifstream usrDataF("userData.json", std::ifstream::binary);
+    if (!usrDataF.good()) {
+        usrDataF.open("../data/userData.json", std::ifstream::binary);
+        if (!usrDataF.good()) {
+            throw FileNotExistException();
+        }
+    }
 
     usrDataF >> usrData;
-
     usrDataF.close();
     gameDataF >> gameData;
     gameDataF.close();
+
     initBuff(usrData["userUltimate"]);
     const Json::Value chefs = gameData["chefs"];
     Skill::loadJson(gameData["skills"]);
@@ -75,8 +93,19 @@ void loadChef(CList &chefList) {
             }
         }
     }
+    auto t = loadToolFile();
+    if (t == EMPTY_FILE__NOT_EQUIPPED) {
+        std::cout << "toolEquipped.csv没有设定规则。允许所有厨师装备厨具。"
+                  << std::endl;
+    } else if (t == NO_FILE__NO_TOOL) {
+        std::cout << "未找到toolEquipped.csv文件。不会装配任何厨具。"
+                  << std::endl;
+    } else {
+        std::cout << "toolEquipped.csv文件已加载。" << std::endl;
+    }
     for (auto &chef : chefList) {
-        toolEquipped(&chef);
+        loadToolFromFile(&chef, t);
+        // toolEquipped(&chef);
     }
 }
 /**

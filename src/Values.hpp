@@ -57,7 +57,14 @@ class Ability {
     Ability(int stirfry, int bake, int boil, int steam, int fry, int knife)
         : stirfry(stirfry), bake(bake), boil(boil), steam(steam), fry(fry),
           knife(knife) {}
-
+    void multiply(double a) {
+        this->stirfry = int(this->stirfry * a);
+        this->bake = int(this->bake * a);
+        this->boil = int(this->boil * a);
+        this->steam = int(this->steam * a);
+        this->fry = int(this->fry * a);
+        this->knife = int(this->knife * a);
+    }
     void add(const Ability &a) {
         this->stirfry += a.stirfry;
         this->bake += a.bake;
@@ -148,5 +155,9 @@ enum AbilityEnum {
     KNIFE
 };
 enum FlavorEnum { UNIDENTIFIED = -1, SWEET, SALTY, SOUR, BITTER, SPICY, TASTY };
-
+enum ToolFileType {
+    NO_FILE__NO_TOOL,
+    EMPTY_FILE__NOT_EQUIPPED,
+    CUSTOMIZE_TOOL
+};
 #endif
